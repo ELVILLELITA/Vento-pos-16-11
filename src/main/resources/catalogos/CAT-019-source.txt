@@ -1,0 +1,9 @@
+Source: Ministerio de Hacienda de El Salvador, catalogo actualizado del Sistema de Facturacion version 1.2
+Catalog: CAT-019 Codigo de Actividad Economica
+Official listing: https://factura.gob.sv/download/catalogo-actualizado-del-sistema-de-facturacion-version-1-2/
+Workbook download: https://factura.gob.sv/download/catalogo-actualizado-del-sistema-de-facturacion-version-1-2/?wpdmdl=5353
+Retrieved: 2026-11-06
+
+The official listing identifies version 1.2; the workbook title itself says V 1.1.
+The JSON contains all 774 code-description rows from CAT-019. The workbook is not
+bundled; this application resource is a data-only extraction for read-only search.

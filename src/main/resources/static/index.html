@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f6f8">
+    <title>Vento | Punto de venta</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+            crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+    <script src="/app.js" defer></script>
+</head>
+<body>
+<div class="app-shell h-screen max-h-screen w-full overflow-hidden flex flex-row">
+    <aside class="sidebar" aria-label="Navegación principal">
+        <a class="brand" href="/" aria-label="Vento, inicio">
+            <span class="brand-mark" aria-hidden="true">v.</span>
+            <span class="brand-name">vento<span>.</span></span>
+        </a>
+
+        <div class="store-switcher">
+            <span class="store-avatar" aria-hidden="true">C</span>
+            <span class="store-copy"><strong>Café Vento</strong><small>Sucursal principal</small></span>
+            <span class="switcher-chevron" aria-hidden="true">⌄</span>
+        </div>
+
+        <span class="nav-caption">MENÚ</span>
+        <nav class="nav-links">
+            <a class="nav-link active" href="#venta" data-module="pos" aria-current="page"><span class="nav-icon" aria-hidden="true">▦</span> Punto de venta</a>
+            <a class="nav-link" href="#ventas" id="sales-nav-link" data-module="ventas"><span class="nav-icon" aria-hidden="true">↗</span> Ventas</a>
+            <a class="nav-link" href="#clientes" id="customers-nav-link" data-module="clientes"><span class="nav-icon" aria-hidden="true">♙</span> Clientes</a>
+            <a class="nav-link" href="#inventario" id="inventory-nav-link" data-module="inventario" hidden><span class="nav-icon" aria-hidden="true">▤</span> Inventario</a>
+            <a class="nav-link" href="#compras" id="purchases-nav-link" data-module="compras" hidden><span class="nav-icon" aria-hidden="true">⇩</span> Compras</a>
+            <a class="nav-link" href="#reportes" id="reports-nav-link" data-module="reportes" hidden><span class="nav-icon" aria-hidden="true">▥</span> Reportes</a>
+            <a class="nav-link" href="#configuracion" id="settings-nav-link" data-module="configuracion" hidden><span class="nav-icon" aria-hidden="true">⚙</span> Configuración</a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="demo-note"><span class="demo-dot"></span><span><strong>Base de datos activa</strong><small>Las ventas se guardan</small></span></div>
+            <a class="nav-link" href="/logout" id="logout-link"><span class="nav-icon" aria-hidden="true">↪</span> Cerrar sesión</a>
+            <div class="profile">
+                <span class="profile-avatar" id="profile-avatar" aria-hidden="true">V</span>
+                <span class="profile-copy"><strong id="profile-name">Cargando usuario...</strong><small id="profile-role">Sesión activa</small></span>
+                <span class="profile-menu" aria-hidden="true">···</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content" id="venta">
+        <header class="topbar">
+            <div class="breadcrumb"><span>Operaciones</span><span class="breadcrumb-separator">/</span><strong id="current-page-title">Punto de venta</strong></div>
+            <div class="topbar-actions"><span class="connection-status"><span class="status-dot"></span> Sistema listo</span><span class="topbar-divider"></span><time id="today-date"></time></div>
+        </header>
+
+        <section class="workspace" aria-label="Punto de venta">
+            <div class="catalog">
+                <div class="page-heading">
+                    <div><p class="eyebrow">TU NEGOCIO, EN MOVIMIENTO</p><h1>Nueva venta<span>.</span></h1><p class="page-subtitle">Selecciona productos para agregarlos a la orden.</p></div>
+                    <button class="shift-badge" id="shift-indicator" type="button" aria-haspopup="dialog" aria-controls="shift-dialog" aria-label="Abrir turno de caja">
+                        <span aria-hidden="true">◷</span><span id="shift-indicator-label">Turno cerrado · Abrir caja</span>
+                    </button>
+                </div>
+
+                <div class="catalog-toolbar">
+                    <label class="search-box" for="product-search"><span class="search-icon" aria-hidden="true">⌕</span><input id="product-search" type="search" placeholder="Buscar productos..." autocomplete="off"><kbd>⌘ K</kbd></label>
+                    <button class="filter-button" id="toggle-filters" type="button" aria-expanded="true" aria-controls="category-list"><span aria-hidden="true">☷</span> Filtros</button>
+                </div>
+
+                <div class="category-list" id="category-list" role="group" aria-label="Filtrar por categoría">
+                    <button class="category-chip selected" type="button" data-category="Todos" aria-pressed="true">Todos <span id="all-count">0</span></button>
+                    <button class="category-chip" type="button" data-category="Café" aria-pressed="false">Café</button>
+                    <button class="category-chip" type="button" data-category="Bebidas" aria-pressed="false">Bebidas</button>
+                    <button class="category-chip" type="button" data-category="Panadería" aria-pressed="false">Panadería</button>
+                    <button class="category-chip" type="button" data-category="Postres" aria-pressed="false">Postres</button>
+                </div>
+
+                <div class="section-heading"><div><h2>Favoritos</h2><p>Productos populares de tu menú</p></div><span class="product-count" id="product-count"></span></div>
+                <div class="catalog-products-scroll">
+                    <div class="product-grid" id="product-grid" aria-live="polite"></div>
+                    <p class="empty-state hidden" id="empty-state">No encontramos productos. Prueba con otra búsqueda.</p>
+                </div>
+            </div>
+
+            <aside class="order-panel w-80 h-full max-h-screen shrink-0 flex flex-col justify-between overflow-hidden bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800" aria-label="Orden actual">
+                <div class="order-header flex-none p-4 border-b border-slate-100">
+                    <div class="order-heading"><div><p class="eyebrow">VENTA ACTUAL</p><h2>Tu orden</h2></div><button class="text-button" id="clear-cart" type="button">Vaciar</button></div>
+                    <div class="order-meta"><span><span class="meta-icon" aria-hidden="true">♧</span> </span><span class="order-number" id="order-number"></span></div>
+                </div>
+
+                <div class="cart-items flex-1 overflow-y-auto min-h-0 p-4" id="cart-items" aria-live="polite">
+                    <div class="cart-empty"><span class="empty-cart-icon" aria-hidden="true">＋</span><strong>Aún no hay productos</strong><span>Elige algo rico para empezar.</span></div>
+                </div>
+
+                <div class="order-bottom flex-none p-4 border-t border-slate-100 bg-white sticky bottom-0">
+                    <div class="discount-row"><span>Descuento</span><button class="discount-button" id="discount-button" type="button">＋ Agregar</button></div>
+                    <div class="totals">
+                        <div><span>Subtotal (sin IVA)</span><span id="subtotal">$0.00</span></div>
+                        <div class="discount-total hidden" id="discount-total-row"><span>Descuento</span><span id="discount-total"></span></div>
+                        <div><span id="tax-label">IVA (13%)</span><span id="tax-total">$0.00</span></div>
+                        <div class="grand-total"><strong>Total</strong><strong id="grand-total">$0.00</strong></div>
+                    </div>
+                    <button class="checkout-button" id="checkout-button" type="button" disabled><span>Cobrar</span><span id="checkout-total">$0.00 <span aria-hidden="true">→</span></span></button>
+                    <p class="secure-note"><span aria-hidden="true">▣</span> Pago seguro en tu punto de venta</p>
+                </div>
+            </aside>
+        </section>
+        <section class="inventory-workspace hidden" id="inventory-workspace" aria-label="Inventario y catálogo">
+            <div class="page-heading inventory-workspace-heading">
+                <div><p class="eyebrow">ADMINISTRACIÓN DEL NEGOCIO</p><h1>Inventario &amp; Catálogo<span>.</span></h1><p class="page-subtitle">Productos, existencias y movimientos en un solo lugar.</p></div>
+            </div>
+            <nav class="inventory-tabs" role="tablist" aria-label="Secciones de inventario">
+                <button class="inventory-tab active" id="inventory-tab-catalogo" type="button" role="tab" aria-selected="true" aria-controls="products-admin" data-inventory-tab="catalogo">Catálogo de Productos</button>
+                <button class="inventory-tab" id="inventory-tab-existencias" type="button" role="tab" aria-selected="false" aria-controls="inventory-stock-section" data-inventory-tab="existencias">Existencias y Ajustes</button>
+                <button class="inventory-tab" id="inventory-tab-kardex" type="button" role="tab" aria-selected="false" aria-controls="inventory-history-section" data-inventory-tab="kardex">Historial / Kardex</button>
+            </nav>
+        <section class="products-admin inventory-tab-panel" id="products-admin" role="tabpanel" aria-labelledby="inventory-tab-catalogo">
+            <div class="page-heading">
+                <div><p class="eyebrow">ADMINISTRACIÓN DEL CATÁLOGO</p><h2 id="products-admin-title">Catálogo de productos</h2><p class="page-subtitle">Administra productos, categorías y precios.</p></div>
+                <span class="product-header-actions">
+                    <button class="product-cancel-button" id="bulk-products-button" type="button">⇧ Carga masiva TXT / CSV</button>
+                    <button class="checkout-button new-product-button" id="new-product-button" type="button">＋ Nuevo producto</button>
+                </span>
+            </div>
+            <div class="products-admin-toolbar">
+                <label class="search-box" for="admin-product-search"><span class="search-icon" aria-hidden="true">⌕</span><input id="admin-product-search" type="search" placeholder="Buscar por nombre o categoría..." autocomplete="off"></label>
+                <label class="admin-category-filter" for="admin-category-filter">Categoría
+                    <select id="admin-category-filter"><option value="">Todas</option></select>
+                </label>
+            </div>
+            <div class="products-table-wrap">
+                <table class="products-table">
+                    <thead><tr><th>Producto</th><th>Categoría</th><th>Precio</th><th>Existencias</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="admin-products-body"></tbody>
+                </table>
+                <p class="empty-state hidden" id="admin-products-empty">No hay productos que coincidan con los filtros.</p>
+            </div>
+        </section>
+        <section class="inventory-admin inventory-tab-panel hidden" id="inventory-admin" aria-labelledby="inventory-title">
+            <div class="page-heading">
+                <div><p class="eyebrow">CONTROL DE EXISTENCIAS</p><h2 id="inventory-title">Existencias y movimientos</h2><p class="page-subtitle">Consulta existencias y registra entradas o salidas.</p></div>
+            </div>
+            <div class="inventory-section" id="inventory-stock-section" role="tabpanel" aria-labelledby="inventory-tab-existencias">
+                <div class="section-heading"><div><h2>Existencias actuales</h2><p>Los niveles menores a 5 unidades requieren atención.</p></div></div>
+                <div class="products-table-wrap">
+                    <table class="products-table">
+                        <thead><tr><th>Producto</th><th>Categoría</th><th>Existencias</th><th>Acción</th></tr></thead>
+                        <tbody id="inventory-products-body"></tbody>
+                    </table>
+                    <p class="empty-state hidden" id="inventory-products-empty">No hay productos activos.</p>
+                </div>
+            </div>
+            <div class="inventory-section hidden" id="inventory-history-section" role="tabpanel" aria-labelledby="inventory-tab-kardex">
+                <div class="section-heading"><div><h2>Historial de movimientos (Kardex)</h2><p>Movimientos ordenados del más reciente al más antiguo.</p></div></div>
+                <div class="products-table-wrap">
+                    <table class="products-table inventory-history-table">
+                        <thead><tr><th>Folio</th><th>Producto</th><th>Tipo</th><th>Cantidad</th><th>Stock anterior</th><th>Stock nuevo</th><th>Fecha</th><th>Usuario</th></tr></thead>
+                        <tbody id="inventory-movements-body"></tbody>
+                    </table>
+                    <p class="empty-state hidden" id="inventory-movements-empty">Aún no hay movimientos de inventario.</p>
+                </div>
+            </div>
+        </section>
+        </section>
+        <section class="sales-admin hidden" id="sales-admin" aria-labelledby="sales-title">
+            <div class="page-heading">
+                <div><p class="eyebrow">REGISTRO DEL NEGOCIO</p><h1 id="sales-title">Historial de ventas<span>.</span></h1><p class="page-subtitle">Consulta tickets, detalles y devoluciones.</p></div>
+            </div>
+            <div class="sales-filters">
+                <label class="search-box" for="sales-folio-filter"><span class="search-icon" aria-hidden="true">⌕</span><input id="sales-folio-filter" type="search" placeholder="Buscar folio..." autocomplete="off"></label>
+                <label>Desde<input id="sales-date-start" type="datetime-local"></label>
+                <label>Hasta<input id="sales-date-end" type="datetime-local"></label>
+                <label>Cajero ID<input id="sales-user-filter" type="number" min="1" step="1" placeholder="Todos"></label>
+                <button class="product-cancel-button" id="sales-search-button" type="button">Filtrar</button>
+            </div>
+            <div class="products-table-wrap">
+                <table class="products-table sales-table">
+                    <thead><tr><th>Folio</th><th>Fecha</th><th>Artículos</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="sales-table-body"></tbody>
+                </table>
+                <p class="empty-state hidden" id="sales-empty">No se encontraron ventas.</p>
+            </div>
+            <div class="sales-pagination">
+                <span id="sales-page-summary">Página 1</span>
+                <div><button class="product-cancel-button" id="sales-previous-page" type="button">Anterior</button><button class="product-cancel-button" id="sales-next-page" type="button">Siguiente</button></div>
+            </div>
+        </section>
+        <section class="customers-admin hidden" id="customers-admin" aria-labelledby="customers-title">
+            <div class="page-heading">
+                <div><p class="eyebrow">DIRECTORIO DEL NEGOCIO</p><h1 id="customers-title">Clientes<span>.</span></h1><p class="page-subtitle">Administra la información de tus clientes.</p></div>
+                <button class="checkout-button new-product-button" id="new-customer-button" type="button">＋ Nuevo cliente</button>
+            </div>
+            <div class="products-admin-toolbar">
+                <label class="search-box" for="customer-search"><span class="search-icon" aria-hidden="true">⌕</span><input id="customer-search" type="search" placeholder="Buscar por nombre o documento..." autocomplete="off"></label>
+            </div>
+            <div class="products-table-wrap">
+                <table class="products-table customers-table">
+                    <thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="customers-table-body"></tbody>
+                </table>
+                <p class="empty-state hidden" id="customers-empty">No se encontraron clientes activos.</p>
+            </div>
+        </section>
+        <section class="customers-admin hidden" id="purchases-admin" aria-labelledby="purchases-title">
+            <div class="page-heading">
+                <div><p class="eyebrow">ABASTECIMIENTO DEL NEGOCIO</p><h1 id="purchases-title">Compras<span>.</span></h1><p class="page-subtitle">Registra compras, consulta el historial y administra proveedores.</p></div>
+            </div>
+            <nav class="inventory-tabs" role="tablist" aria-label="Secciones de compras">
+                <button class="inventory-tab active" type="button" role="tab" aria-selected="true" data-purchase-tab="registro">Registro de compras</button>
+                <button class="inventory-tab" type="button" role="tab" aria-selected="false" data-purchase-tab="historial">Historial de compras</button>
+                <button class="inventory-tab" type="button" role="tab" aria-selected="false" data-purchase-tab="proveedores">Directorio de proveedores</button>
+            </nav>
+            <section class="purchase-tab-panel" id="purchase-register-panel" role="tabpanel">
+                <div class="section-heading"><div><h2>Nueva compra</h2><p>El registro actualiza existencias y agrega entradas al Kardex.</p></div></div>
+                <div class="purchase-header-fields">
+                    <label class="product-form-field">Proveedor
+                        <select id="purchase-supplier" required><option value="">Selecciona un proveedor</option></select>
+                    </label>
+                    <button class="checkout-button purchase-new-action" id="purchase-new-supplier" type="button">＋ Nuevo proveedor</button>
+                    <label class="product-form-field">Factura del proveedor
+                        <input id="purchase-invoice-number" type="text" maxlength="80" placeholder="Número de factura">
+                    </label>
+                </div>
+                <div class="section-heading purchase-lines-heading"><div><h2>Productos</h2><p>Ingresa cantidad y costo unitario de cada producto.</p></div><span class="purchase-line-actions"><button class="checkout-button purchase-new-action" id="purchase-new-product" type="button">＋ Nuevo producto</button></span></div>
+                <div class="purchase-lines-block">
+                    <div class="products-table-wrap">
+                        <table class="products-table purchase-lines-table">
+                            <thead><tr><th>Producto</th><th>Cantidad</th><th>Costo unitario</th><th>Subtotal</th><th></th></tr></thead>
+                            <tbody id="purchase-lines"></tbody>
+                        </table>
+                    </div>
+                    <button class="checkout-button purchase-add-line-button" id="purchase-add-line" type="button">＋ Agregar producto</button>
+                </div>
+                <div class="purchase-submit-row"><strong>Total: <span id="purchase-total">$0.00</span></strong><button class="checkout-button" id="purchase-submit" type="button">Registrar compra</button></div>
+                <p class="dialog-error hidden" id="purchase-form-error" role="alert"></p>
+            </section>
+            <section class="purchase-tab-panel hidden" id="purchase-history-panel" role="tabpanel">
+                <div class="section-heading"><div><h2>Historial de compras</h2><p>Compras registradas y sus productos.</p></div></div>
+                <div class="products-table-wrap"><table class="products-table">
+                    <thead><tr><th>Fecha</th><th>Folio interno</th><th>Proveedor</th><th>Factura proveedor</th><th>Total</th><th>Detalle</th></tr></thead>
+                    <tbody id="purchases-table-body"></tbody>
+                </table><p class="empty-state hidden" id="purchases-empty">No hay compras registradas.</p></div>
+            </section>
+            <section class="purchase-tab-panel hidden" id="purchase-suppliers-panel" role="tabpanel">
+                <div class="page-heading">
+                    <div><h2>Directorio de proveedores</h2><p class="page-subtitle">Administra datos de contacto y fiscales.</p></div>
+                    <button class="checkout-button new-product-button" id="new-supplier-button" type="button">＋ Nuevo proveedor</button>
+                </div>
+                <div class="products-table-wrap"><table class="products-table">
+                    <thead><tr><th>Nombre comercial</th><th>Razón social</th><th>NRC</th><th>NIT</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody id="suppliers-table-body"></tbody>
+                </table><p class="empty-state hidden" id="suppliers-empty">No hay proveedores registrados.</p></div>
+            </section>
+        </section>
+        <section class="reports-admin hidden" id="reports-admin" aria-labelledby="reports-title">
+            <div class="page-heading reports-heading">
+                <div><p class="eyebrow">ANÁLISIS DEL NEGOCIO</p><h1 id="reports-title">Reportes<span>.</span></h1><p class="page-subtitle">Indicadores de ventas y desempeño del catálogo.</p></div>
+                <div class="reports-export-actions">
+                    <button class="product-cancel-button" id="reports-print" type="button">Imprimir</button>
+                    <div class="reports-download-menu">
+                        <button class="product-cancel-button" id="reports-download" type="button"
+                                aria-haspopup="true" aria-expanded="false">Descargar ▾</button>
+                        <div class="reports-download-options hidden" id="reports-download-options" role="menu">
+                            <button type="button" data-report-download="pdf" role="menuitem">PDF</button>
+                            <button type="button" data-report-download="excel" role="menuitem">Excel (.xlsx)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="reports-controls">
+                <label>Periodo
+                    <select id="reports-period">
+                        <option value="hoy">Hoy</option>
+                        <option value="semana">Esta semana</option>
+                        <option value="mes">Este mes</option>
+                        <option value="personalizado">Personalizado</option>
+                    </select>
+                </label>
+                <label>Desde<input id="reports-date-start" type="date" disabled></label>
+                <label>Hasta<input id="reports-date-end" type="date" disabled></label>
+                <button class="checkout-button reports-apply" id="reports-apply" type="button">Actualizar</button>
+            </div>
+            <div class="reports-kpis" aria-live="polite">
+                <article class="report-kpi"><span>Total ventas</span><strong id="report-total-sales">$0.00</strong></article>
+                <article class="report-kpi"><span>Total transacciones</span><strong id="report-total-transactions">0</strong></article>
+                <article class="report-kpi"><span>Ticket medio</span><strong id="report-average-ticket">$0.00</strong></article>
+                <article class="report-kpi"><span>Total devoluciones</span><strong id="report-total-returns">$0.00</strong></article>
+            </div>
+            <div class="reports-grid">
+                <article class="report-panel">
+                    <h2>Ventas por empleado</h2>
+                    <div class="products-table-wrap"><table class="products-table">
+                        <thead><tr><th>Cajero</th><th>Transacciones</th><th>Ventas</th></tr></thead>
+                        <tbody id="report-employees"></tbody>
+                    </table><p class="empty-state hidden" id="report-employees-empty">Sin ventas para este periodo.</p></div>
+                </article>
+                <article class="report-panel">
+                    <h2>Métodos de pago</h2>
+                    <div class="report-donut-chart" id="report-payment-methods"></div>
+                    <p class="empty-state hidden" id="report-payments-empty">Sin ventas para este periodo.</p>
+                </article>
+                <article class="report-panel">
+                    <h2>Top productos · más vendidos</h2>
+                    <div class="report-rank-list" id="report-top-products"></div>
+                    <p class="empty-state hidden" id="report-top-empty">Sin productos vendidos para este periodo.</p>
+                </article>
+                <article class="report-panel">
+                    <h2>Productos menos vendidos</h2>
+                    <div class="report-rank-list" id="report-low-products"></div>
+                    <p class="empty-state hidden" id="report-low-empty">No hay productos en el catálogo.</p>
+                </article>
+                <article class="report-panel report-panel-wide">
+                    <h2>Ventas por categoría</h2>
+                    <div class="report-donut-chart" id="report-categories"></div>
+                    <p class="empty-state hidden" id="report-categories-empty">Sin ventas por categoría para este periodo.</p>
+                </article>
+            </div>
+        </section>
+        <section class="settings-view hidden" id="settings-view" aria-labelledby="settings-title">
+            <div class="page-heading">
+                <div><p class="eyebrow">PREFERENCIAS DEL SISTEMA</p><h1 id="settings-title">Configuración<span>.</span></h1><p class="page-subtitle">Administra tu perfil y las preferencias de Vento.</p></div>
+            </div>
+            <div class="settings-tabs" role="tablist" aria-label="Secciones de configuración">
+                <button class="settings-tab active" type="button" role="tab" aria-selected="true" data-settings-tab="perfil">Mi Perfil &amp; Apariencia</button>
+                <button class="settings-tab" type="button" role="tab" aria-selected="false" data-settings-tab="negocio" hidden>Datos del Negocio</button>
+                <button class="settings-tab" type="button" role="tab" aria-selected="false" data-settings-tab="dte" hidden>Facturación Electrónica DTE</button>
+                <button class="settings-tab" type="button" role="tab" aria-selected="false" data-settings-tab="promociones" hidden>Promociones</button>
+                <button class="settings-tab" type="button" role="tab" aria-selected="false" data-settings-tab="usuarios" hidden>Gestión de Usuarios</button>
+                <button class="settings-tab" type="button" role="tab" aria-selected="false" data-settings-tab="logs">Logs de errores</button>
+            </div>
+            <section class="settings-section" data-settings-panel="perfil" role="tabpanel" aria-labelledby="profile-settings-title">
+                <div class="section-heading"><div><h2 id="profile-settings-title">Mi perfil y preferencias</h2><p>Información de tu cuenta y opciones de impresión locales.</p></div></div>
+                <div class="settings-profile-card">
+                    <div><span class="settings-label">Nombre</span><strong id="settings-profile-name">—</strong></div>
+                    <div><span class="settings-label">Usuario</span><strong id="settings-profile-username">—</strong></div>
+                    <div><span class="settings-label">Rol</span><strong id="settings-profile-role">—</strong></div>
+                </div>
+                <form id="change-password-form" class="settings-form">
+                    <h3>Cambiar contraseña</h3>
+                    <label class="product-form-field">Contraseña actual<input name="passwordActual" type="password" autocomplete="current-password"></label>
+                    <label class="product-form-field">Nueva contraseña<input name="nuevaPassword" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></label>
+                    <p class="dialog-error hidden" id="change-password-error" role="alert"></p>
+                    <button class="checkout-button settings-submit" type="submit">Actualizar contraseña</button>
+                </form>
+                <label class="settings-preference"><span><strong>Impresión al finalizar una venta</strong><small>Abre el diálogo de impresión del navegador para imprimir o guardar el ticket como PDF.</small></span><input id="ticket-print-preference" type="checkbox"></label>
+                <div class="settings-preference settings-appearance">
+                    <span><strong>Modo de apariencia</strong><small>Elige entre una interfaz clara u oscura.</small></span>
+                    <div class="appearance-options" role="group" aria-label="Modo de apariencia">
+                        <button class="appearance-option" type="button" data-theme-mode="light" aria-pressed="false">Claro</button>
+                        <button class="appearance-option" type="button" data-theme-mode="dark" aria-pressed="false">Oscuro</button>
+                    </div>
+                </div>
+                <div class="settings-preference settings-appearance">
+                    <span><strong>Familia de tema</strong><small>Elige una paleta 60-30-10 para toda la interfaz.</small></span>
+                    <div class="theme-family-options" role="group" aria-label="Familia de tema">
+                        <button class="theme-family-option" type="button" data-theme-family="theme-slate" aria-pressed="false">Slate &amp; Emerald</button>
+                        <button class="theme-family-option" type="button" data-theme-family="theme-midnight" aria-pressed="false">Midnight &amp; Indigo</button>
+                        <button class="theme-family-option" type="button" data-theme-family="theme-zinc" aria-pressed="false">Zinc &amp; Amber</button>
+                        <button class="theme-family-option" type="button" data-theme-family="theme-corporate" aria-pressed="false">Corporate Blue</button>
+                    </div>
+                </div>
+            </section>
+            <section class="settings-section hidden" id="business-settings-section" data-settings-panel="negocio" role="tabpanel" aria-labelledby="business-settings-title">
+                <div class="section-heading"><div><h2 id="business-settings-title">Configuración general del negocio</h2><p>Estos datos aparecen en los tickets y afectan ventas y folios nuevos.</p></div></div>
+                <form id="business-settings-form" class="settings-form settings-form-grid">
+                    <label class="product-form-field">Nombre del establecimiento<input name="nombreEstablecimiento" type="text" maxlength="150" required></label>
+                    <label class="product-form-field">Dirección<input name="direccion" type="text" maxlength="250"></label>
+                    <label class="product-form-field">Teléfono<input name="telefono" type="tel" maxlength="40"></label>
+                    <label class="product-form-field">Código de sucursal<input name="codigoSucursal" type="text" pattern="[A-Z0-9]{1,10}" maxlength="10" required></label>
+                    <label class="product-form-field">Código de estación<input name="codigoEstacion" type="text" pattern="[A-Z0-9]{1,10}" maxlength="10" required></label>
+                    <label class="product-form-field">IVA (%)<input name="porcentajeIva" type="number" min="0" max="100" step="0.01" required></label>
+                    <label class="product-form-field">Símbolo de moneda<input name="monedaSimbolo" type="text" maxlength="5" required></label>
+                    <label class="product-form-field settings-form-wide">Pie de página del ticket<input name="piePaginaTicket" type="text" maxlength="250" required></label>
+                    <p class="dialog-error hidden settings-form-wide" id="business-settings-error" role="alert"></p>
+                    <div class="settings-form-wide"><button class="checkout-button settings-submit" type="submit">Guardar configuración</button></div>
+                </form>
+            </section>
+            <section class="settings-section hidden" id="dte-settings-section" data-settings-panel="dte" role="tabpanel" aria-labelledby="dte-settings-title">
+                <div class="section-heading"><div><h2 id="dte-settings-title">Facturación Electrónica DTE</h2><p>Configura los datos del emisor y las credenciales para firmar documentos tributarios electrónicos.</p></div></div>
+                <form id="dte-settings-form" class="settings-form settings-form-grid">
+                    <label class="product-form-field">Ambiente
+                        <select name="ambienteDte" required>
+                            <option value="00">Pruebas (00)</option>
+                            <option value="01">Producción (01)</option>
+                        </select>
+                    </label>
+                    <label class="product-form-field">NIT del emisor<input name="nitEmisor" type="text" maxlength="30" autocomplete="off"></label>
+                    <label class="product-form-field">NRC del emisor<input name="nrcEmisor" type="text" maxlength="30" autocomplete="off"></label>
+                    <label class="product-form-field">Código de actividad económica<input name="codigoActividadEmisor" type="text" maxlength="10" autocomplete="off"></label>
+                    <label class="product-form-field">Clave privada del certificado
+                        <input name="clavePrivadaCertificado" type="password" maxlength="10000" autocomplete="new-password" placeholder="Sin cambios" aria-describedby="dte-secret-help">
+                    </label>
+                    <label class="product-form-field">Contraseña del certificado
+                        <input name="passwordCertificado" type="password" maxlength="1000" autocomplete="new-password" placeholder="Sin cambios" aria-describedby="dte-secret-help">
+                    </label>
+                    <label class="product-form-field">URL del firmador<input name="urlFirmador" type="url" maxlength="500" value="http://localhost:8080" required></label>
+                    <label class="product-form-field">Código de punto de venta MH<input name="codigoPuntoVentaMh" type="text" maxlength="15" autocomplete="off"></label>
+                    <p class="settings-form-wide settings-secret-help" id="dte-secret-help">Las credenciales guardadas no se muestran. Déjalas en blanco para conservarlas o escribe un nuevo valor para reemplazarlas.</p>
+                    <p class="dialog-error hidden settings-form-wide" id="dte-settings-error" role="alert"></p>
+                    <div class="settings-form-wide"><button class="checkout-button settings-submit" type="submit">Guardar configuración DTE</button></div>
+                </form>
+            </section>
+            <section class="settings-section hidden" id="user-management-section" data-settings-panel="usuarios" role="tabpanel" aria-labelledby="user-management-title">
+                <div class="section-heading"><div><h2 id="user-management-title">Gestión de usuarios</h2><p>Crea, edita y deshabilita cuentas, asigna roles y restablece contraseñas.</p></div></div>
+                <form id="create-user-form" class="settings-form settings-form-grid">
+                    <label class="product-form-field">Usuario<input name="username" type="text" maxlength="100" pattern="[A-Za-z0-9._-]+" required></label>
+                    <label class="product-form-field">Nombre completo<input name="nombreCompleto" type="text" maxlength="150" required></label>
+                    <label class="product-form-field">Contraseña inicial<input name="password" type="password" minlength="8" maxlength="72" required autocomplete="new-password"></label>
+                    <label class="product-form-field">Rol<select name="rol"><option value="ROLE_USER">Cajero</option><option value="ROLE_ADMIN">Administrador</option></select></label>
+                    <div class="settings-form-wide"><button class="checkout-button settings-submit" type="submit">Crear usuario</button></div>
+                </form>
+                <div class="products-table-wrap settings-user-table">
+                    <table class="products-table">
+                        <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <tbody id="settings-users-body"></tbody>
+                    </table>
+                    <p class="empty-state hidden" id="settings-users-empty">No hay usuarios registrados.</p>
+                </div>
+            </section>
+            <section class="settings-section hidden" id="logs-settings-section" data-settings-panel="logs" role="tabpanel" aria-labelledby="logs-settings-title">
+                <div class="section-heading">
+                    <div><h2 id="logs-settings-title">Logs de errores</h2><p>Últimas 150 líneas del registro técnico de la aplicación.</p></div>
+                    <button class="product-cancel-button" id="refresh-error-log" type="button">Actualizar log</button>
+                </div>
+                <pre class="terminal-box" id="error-log-viewer" aria-live="polite" aria-label="Registro técnico de errores">Cargando log...</pre>
+            </section>
+            <section class="settings-section hidden" id="promotions-settings-section" data-settings-panel="promociones" role="tabpanel" aria-labelledby="promotions-settings-title">
+                <div class="section-heading">
+                    <div><h2 id="promotions-settings-title">Promociones</h2><p>Configura ofertas por producto, categoría, volumen y gasto mínimo. Solo se aplica automáticamente la mejor promoción elegible.</p></div>
+                    <button class="checkout-button settings-submit" type="button" id="create-promotion-button">Nueva promoción</button>
+                </div>
+                <div class="products-table-wrap">
+                    <table class="products-table">
+                        <thead><tr><th>Promoción</th><th>Regla</th><th>Vigencia</th><th>Prioridad</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <tbody id="promotions-table-body"></tbody>
+                    </table>
+                    <p class="empty-state hidden" id="promotions-empty">No hay promociones configuradas.</p>
+                </div>
+            </section>
+        </section>
+    </main>
+</div>
+
+<dialog class="product-dialog" id="promotion-dialog" aria-labelledby="promotion-dialog-title">
+    <form id="promotion-form">
+        <button class="dialog-close" id="close-promotion-dialog" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow">ADMINISTRACIÓN</p>
+        <h2 id="promotion-dialog-title">Nueva promoción</h2>
+        <input name="id" type="hidden">
+        <label class="product-form-field">Nombre<input name="name" type="text" maxlength="120" required></label>
+        <label class="product-form-field">Tipo
+            <select name="type" required>
+                <option value="BUY_X_GET_Y">Compra X y recibe Y gratis</option>
+                <option value="PRODUCT_PERCENT">Porcentaje en producto</option>
+                <option value="CATEGORY_PERCENT">Porcentaje en categoría</option>
+                <option value="SPEND_TIER">Porcentaje por gasto mínimo</option>
+            </select>
+        </label>
+        <div class="settings-form-grid">
+            <label class="product-form-field">Producto<div data-promotion-field="product"><select name="productId"></select></div></label>
+            <label class="product-form-field">Categoría<div data-promotion-field="category"><select name="category"></select></div></label>
+            <label class="product-form-field">Unidades a comprar<div data-promotion-field="buy"><input name="buyQuantity" type="number" min="1"></div></label>
+            <label class="product-form-field">Unidades gratis<div data-promotion-field="free"><input name="freeQuantity" type="number" min="1"></div></label>
+            <label class="product-form-field">Descuento (%)<div data-promotion-field="percent"><input name="discountPercent" type="number" min="0.01" max="100" step="0.01"></div></label>
+            <label class="product-form-field">Gasto mínimo<div data-promotion-field="minimum"><input name="minimumSpend" type="number" min="0.01" step="0.01"></div></label>
+        </div>
+        <div class="settings-form-grid">
+            <label class="product-form-field">Inicio<input name="startsAt" type="datetime-local"></label>
+            <label class="product-form-field">Fin<input name="endsAt" type="datetime-local"></label>
+            <label class="product-form-field">Prioridad<input name="priority" type="number" min="0" value="0" required></label>
+            <label class="product-form-field">Estado<select name="active"><option value="true">Activa</option><option value="false">Pausada</option></select></label>
+        </div>
+        <p class="dialog-error hidden" id="promotion-form-error" role="alert"></p>
+        <div class="dialog-actions"><button class="secondary-button" type="button" id="cancel-promotion-form">Cancelar</button><button class="checkout-button" type="submit">Guardar promoción</button></div>
+    </form>
+</dialog>
+<dialog class="product-dialog" id="discount-authorization-dialog" aria-labelledby="discount-authorization-title">
+    <form id="discount-authorization-form">
+        <button class="dialog-close" id="close-discount-authorization" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow">AUTORIZACIÓN REQUERIDA</p>
+        <h2 id="discount-authorization-title">Descuento manual</h2>
+        <p>Un administrador debe verificar sus credenciales para autorizar este descuento. La autorización se limita a este importe y a una venta.</p>
+        <label class="product-form-field">Importe<input name="amount" type="number" min="0.01" step="0.01" required></label>
+        <label class="product-form-field">Usuario administrador<input name="username" type="text" autocomplete="username" required></label>
+        <label class="product-form-field">Contraseña administrador<input name="password" type="password" autocomplete="current-password" required></label>
+        <p class="dialog-error hidden" id="discount-authorization-error" role="alert"></p>
+        <div class="dialog-actions"><button class="secondary-button" type="button" id="cancel-discount-authorization">Cancelar</button><button class="checkout-button" type="submit">Autorizar descuento</button></div>
+    </form>
+</dialog>
+<dialog class="product-dialog" id="edit-user-dialog" aria-labelledby="edit-user-title">
+    <form id="edit-user-form">
+        <button class="dialog-close" id="close-edit-user-dialog" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow">GESTIÓN DE USUARIOS</p>
+        <h2 id="edit-user-title">Editar usuario</h2>
+        <label class="product-form-field">Nombre completo<input name="nombreCompleto" type="text" maxlength="150" required></label>
+        <label class="product-form-field">Usuario<input name="username" type="text" maxlength="100" pattern="[A-Za-z0-9._-]+" required></label>
+        <label class="product-form-field">Rol<select name="rol"><option value="ROLE_USER">Cajero</option><option value="ROLE_ADMIN">Administrador</option></select></label>
+        <p class="dialog-error hidden" id="edit-user-error" role="alert"></p>
+        <div class="product-form-actions"><button class="product-cancel-button" id="cancel-edit-user" type="button">Cancelar</button><button class="checkout-button" type="submit">Guardar cambios</button></div>
+    </form>
+</dialog>
+<dialog class="product-dialog customer-dialog" id="supplier-dialog" aria-labelledby="supplier-dialog-title">
+    <form id="supplier-form">
+        <button class="dialog-close" id="close-supplier-dialog" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow">DIRECTORIO DE PROVEEDORES</p>
+        <h2 id="supplier-dialog-title">Nuevo proveedor</h2>
+        <div class="customer-form-grid">
+            <label class="product-form-field customer-form-wide">Nombre comercial<input name="nombreComercial" type="text" maxlength="150" required></label>
+            <label class="product-form-field customer-form-wide">Razón social<input name="razonSocial" type="text" maxlength="180"></label>
+            <label class="product-form-field">NRC<input name="nrc" type="text" maxlength="30"></label>
+            <label class="product-form-field">NIT<input name="nit" type="text" maxlength="30"></label>
+            <label class="product-form-field">Teléfono<input name="telefono" type="tel" maxlength="30"></label>
+            <label class="product-form-field">Email<input name="email" type="email" maxlength="150"></label>
+            <label class="product-form-field customer-form-wide">Dirección<input name="direccion" type="text" maxlength="250"></label>
+        </div>
+        <p class="dialog-error hidden" id="supplier-form-error" role="alert"></p>
+        <div class="product-form-actions"><button class="product-cancel-button" id="cancel-supplier-form" type="button">Cancelar</button><button class="checkout-button" type="submit">Guardar proveedor</button></div>
+    </form>
+</dialog>
+<dialog class="product-dialog" id="purchase-detail-dialog" aria-labelledby="purchase-detail-title">
+    <button class="dialog-close" id="close-purchase-detail" type="button" aria-label="Cerrar">×</button>
+    <p class="eyebrow">HISTORIAL DE COMPRAS</p>
+    <h2 id="purchase-detail-title">Detalle de compra</h2>
+    <div id="purchase-detail-content"></div>
+    <div class="product-form-actions"><button class="product-cancel-button" id="close-purchase-detail-button" type="button">Cerrar</button></div>
+</dialog>
+<dialog class="checkout-dialog" id="checkout-dialog" aria-labelledby="dialog-title">
+    <form method="dialog" class="dialog-close-form"><button class="dialog-close" aria-label="Cerrar" value="cancel">×</button></form>
+    <p class="eyebrow">FINALIZAR VENTA</p>
+    <h2 id="dialog-title">¿Cómo deseas cobrar?</h2>
+    <p class="dialog-total" id="dialog-total">$0.00</p>
+    <section class="checkout-card" aria-labelledby="checkout-payment-title">
+        <h3 id="checkout-payment-title" class="checkout-card-title">1. Método y Tipo de Pago</h3>
+        <div class="receipt-type-selector" role="group" aria-label="Tipo de comprobante">
+            <button class="receipt-type-button active" type="button" data-receipt-type="CONSUMIDOR_FINAL" aria-pressed="true">Consumidor Final</button>
+            <button class="receipt-type-button" type="button" data-receipt-type="CREDITO_FISCAL" aria-pressed="false">Crédito Fiscal (CCF)</button>
+        </div>
+        <div class="payment-methods" role="group" aria-label="Método de pago">
+            <button class="payment-method pay-method-btn active" type="button" data-payment="Efectivo" data-method="Efectivo" aria-pressed="true"><span aria-hidden="true">💵</span> Efectivo</button>
+            <button class="payment-method pay-method-btn" type="button" data-payment="Devolucion" data-method="Devolucion" aria-pressed="false"><span aria-hidden="true">🔄</span> Devolución</button>
+            <button class="payment-method pay-method-btn" type="button" data-payment="Cuscatlan" data-method="Cuscatlan" aria-pressed="false"><span aria-hidden="true">💳</span> Cuscatlán</button>
+            <button class="payment-method pay-method-btn" type="button" data-payment="Nico" data-method="Nico" aria-pressed="false"><span aria-hidden="true">📱</span> Nico</button>
+            <button class="payment-method pay-method-btn" type="button" data-payment="Credomatic" data-method="Credomatic" aria-pressed="false"><span aria-hidden="true">💳</span> Credomatic</button>
+            <button class="payment-method pay-method-btn" type="button" data-payment="Mensajeria" data-method="Mensajeria" aria-pressed="false"><span aria-hidden="true">🚚</span> Mensajería</button>
+        </div>
+        <p class="payment-terminal-note hidden" id="payment-terminal-note">La app no conecta con una terminal. Cobra en tu terminal física antes de registrar la venta.</p>
+        <label class="cash-field hidden" id="return-folio-field">Folio de devolución
+            <input id="input-return-folio" type="text" maxlength="32" autocomplete="off" placeholder="Ej. CA-S01-C01-000001">
+        </label>
+        <div class="card-voucher-container hidden" id="card-voucher-container">
+            <p class="card-voucher-title">Comprobante de terminal física</p>
+            <div class="card-voucher-fields">
+                <label class="cash-field">Últimos 4 dígitos
+                    <input id="input-card-last4" type="text" maxlength="4" inputmode="numeric" autocomplete="off">
+                </label>
+                <label class="cash-field">Código de autorización
+                    <input id="input-auth-code" type="text" autocomplete="off">
+                </label>
+            </div>
+        </div>
+        <p class="payment-balance">Restante: <strong id="payment-remaining">$0.00</strong></p>
+        <div id="partial-payments" class="partial-payments"></div>
+        <button class="sale-action-button" id="add-partial-payment" type="button">＋ Agregar pago parcial</button>
+        <label class="tax-exempt-option"><input id="chk-venta-exenta" type="checkbox"> Venta Exenta <span>(IVA $0.00)</span></label>
+    </section>
+    <section class="checkout-card" aria-labelledby="checkout-customer-title">
+        <h3 id="checkout-customer-title" class="checkout-card-title">2. Información del Cliente</h3>
+        <div class="cash-field checkout-customer-field">
+            <label for="checkout-customer-search">Cliente <span class="required-indicator hidden" id="checkout-customer-required">*</span></label>
+            <input id="checkout-customer-search" type="search" autocomplete="off" placeholder="Buscar por nombre o documento...">
+            <div class="customer-suggestions hidden" id="checkout-customer-suggestions" role="listbox" aria-label="Clientes"></div>
+            <div class="checkout-customer-selection"><span id="checkout-customer-name">Cliente General / Consumidor Final</span><button class="text-button" id="clear-checkout-customer" type="button">Cliente general</button></div>
+            <button class="sale-action-button checkout-new-customer" id="checkout-new-customer" type="button">＋ Nuevo cliente</button>
+            <div class="fiscal-customer-warning hidden" id="fiscal-customer-warning" role="alert">
+                <span id="fiscal-customer-warning-text"></span>
+                <button class="sale-action-button hidden" id="complete-fiscal-customer" type="button">Completar datos fiscales</button>
+            </div>
+        </div>
+    </section>
+    <section class="checkout-card" id="cash-payment-card" aria-labelledby="checkout-cash-title">
+        <h3 id="checkout-cash-title" class="checkout-card-title">3. Monto del pago</h3>
+        <label class="cash-field" id="cash-field">Monto<input id="cash-received" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></label>
+        <p class="change-line hidden" id="change-line">Cambio <strong id="change-total">$0.00</strong></p>
+    </section>
+    <p class="dialog-error hidden" id="dialog-error" role="alert"></p>
+    <button class="checkout-button dialog-confirm" id="confirm-payment" type="button"><span>Confirmar pago</span><span aria-hidden="true">→</span></button>
+</dialog>
+<dialog class="product-dialog shift-dialog" id="shift-dialog" aria-labelledby="shift-dialog-title">
+    <button class="dialog-close" id="close-shift-dialog" type="button" aria-label="Cerrar">×</button>
+    <p class="eyebrow" id="shift-dialog-eyebrow">CONTROL DE CAJA</p>
+    <h2 id="shift-dialog-title">Abrir turno</h2>
+    <form id="shift-open-form">
+        <label class="product-form-field">Efectivo inicial en caja
+            <input id="shift-opening-cash" name="montoInicial" type="number" min="0" step="0.01" inputmode="decimal" required>
+        </label>
+        <label class="product-form-field">Observaciones
+            <textarea name="observaciones" rows="2" maxlength="500" placeholder="Opcional"></textarea>
+        </label>
+        <p class="dialog-error hidden" id="shift-open-error" role="alert"></p>
+        <div class="product-form-actions">
+            <button class="product-cancel-button" id="cancel-shift-open" type="button">Cancelar</button>
+            <button class="checkout-button" id="submit-shift-open" type="submit">Abrir caja</button>
+        </div>
+    </form>
+    <section id="shift-audit" class="hidden" aria-live="polite">
+        <div id="shift-audit-details"></div>
+        <label class="product-form-field" id="shift-counted-field">Efectivo contado
+            <input id="shift-counted-cash" type="number" min="0" step="0.01" inputmode="decimal" required>
+        </label>
+        <p class="shift-variance-line" id="shift-live-variance">Diferencia: —</p>
+        <label class="product-form-field" id="shift-close-observations-field">Observaciones de cierre
+            <textarea id="shift-close-observations" rows="2" maxlength="500" placeholder="Opcional"></textarea>
+        </label>
+        <p class="dialog-error hidden" id="shift-close-error" role="alert"></p>
+        <div class="product-form-actions" id="shift-close-actions">
+            <button class="product-cancel-button" id="cancel-shift-close" type="button">Cancelar</button>
+            <button class="checkout-button" id="submit-shift-close" type="button">Cerrar y auditar</button>
+        </div>
+        <div class="product-form-actions hidden" id="shift-closed-actions">
+            <button class="product-cancel-button" id="print-shift-report" type="button">Imprimir corte Z</button>
+            <button class="checkout-button" id="finish-shift-report" type="button">Listo</button>
+        </div>
+    </section>
+</dialog>
+<dialog class="product-dialog customer-dialog" id="customer-dialog" aria-labelledby="customer-dialog-title">
+    <form id="customer-form">
+        <button class="dialog-close" id="close-customer-dialog" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow">DIRECTORIO DE CLIENTES</p>
+        <h2 id="customer-dialog-title">Nuevo cliente</h2>
+        <div class="customer-form-grid">
+            <label class="product-form-field customer-form-wide">Nombre<input name="nombre" type="text" maxlength="150" required></label>
+            <label class="product-form-field">Tipo de documento<select name="tipoDocumento"><option value="DUI">DUI</option><option value="NIT">NIT</option><option value="NRC">NRC</option><option value="PASAPORTE">Pasaporte</option></select></label>
+            <label class="product-form-field">Documento<input name="documento" type="text" maxlength="30"></label>
+            <label class="product-form-field">NRC<input name="nrc" type="text" maxlength="30"></label>
+            <label class="product-form-field customer-form-wide activity-field">
+                Giro
+                <input name="giro" id="customer-giro" type="text" maxlength="150" role="combobox"
+                       aria-autocomplete="list" aria-expanded="false" aria-controls="activity-suggestions"
+                       autocomplete="off" placeholder="Buscar por código o actividad; también puedes escribirlo">
+                <input name="codigoActividad" id="customer-activity-code" type="hidden">
+                <div class="activity-suggestions hidden" id="activity-suggestions" role="listbox" aria-label="Actividades económicas"></div>
+                <small class="activity-selection" id="activity-selection"></small>
+            </label>
+            <label class="product-form-field">Teléfono<input name="telefono" type="tel" maxlength="30"></label>
+            <label class="product-form-field">Email<input name="email" type="email" maxlength="150"></label>
+            <label class="product-form-field customer-form-wide">Dirección<input name="direccion" type="text" maxlength="250"></label>
+        </div>
+        <p class="dialog-error hidden" id="customer-form-error" role="alert"></p>
+        <div class="product-form-actions"><button class="product-cancel-button" id="cancel-customer-form" type="button">Cancelar</button><button class="checkout-button" id="save-customer-button" type="submit">Guardar cliente</button></div>
+    </form>
+</dialog>
+<dialog class="history-dialog" id="history-dialog" aria-labelledby="history-title">
+    <button class="dialog-close" id="close-ticket-dialog" type="button" aria-label="Cerrar">×</button>
+    <div id="history-ticket-print-area">
+        <p class="eyebrow">COMPROBANTE DE VENTA</p>
+        <h3 id="ticket-business-name">Café Vento</h3>
+        <p id="ticket-business-contact"></p>
+        <h2 id="history-title">Detalle de venta</h2>
+        <div class="ticket-metadata" id="ticket-metadata"></div>
+        <div class="ticket-items" id="history-items"></div>
+        <div class="ticket-totals" id="ticket-totals"></div>
+        <div class="ticket-returns" id="ticket-returns"></div>
+        <div class="ticket-business-footer" id="ticket-business-footer"></div>
+    </div>
+    <div class="ticket-actions">
+        <button class="product-cancel-button" id="print-ticket-button" type="button">Imprimir ticket</button>
+        <button class="product-cancel-button" id="sign-dte-button" type="button">Firmar DTE</button>
+        <button class="product-cancel-button hidden" id="cancel-sale-button" type="button">Anular venta</button>
+        <button class="product-cancel-button hidden" id="process-return-button" type="button">Procesar cambio completo</button>
+    </div>
+    <pre class="signed-dte-result hidden" id="signed-dte-result" aria-live="polite"></pre>
+</dialog>
+<dialog class="product-dialog return-confirmation-dialog" id="return-confirmation-dialog" aria-labelledby="return-confirmation-title">
+    <form id="return-confirmation-form">
+        <button class="dialog-close" id="close-return-confirmation" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow">DEVOLUCIÓN</p>
+        <h2 id="return-confirmation-title">Confirmar devolución</h2>
+        <p class="return-confirmation-folio" id="return-confirmation-folio"></p>
+        <div class="return-confirmation-items" id="return-confirmation-items"></div>
+        <div class="return-confirmation-total"><span>Total del ticket para cambio</span><strong id="return-confirmation-total"></strong></div>
+        <label class="product-form-field">Motivo de devolución<textarea name="motivo" rows="3" maxlength="250" required placeholder="Ej. Producto defectuoso"></textarea></label>
+        <p class="dialog-error hidden" id="return-confirmation-error" role="alert"></p>
+        <div class="product-form-actions">
+            <button class="product-cancel-button" id="cancel-return-confirmation" type="button">Cancelar</button>
+            <button class="checkout-button" id="confirm-return-button" type="submit">Confirmar devolución</button>
+        </div>
+    </form>
+</dialog>
+<!-- Modal / Contenedor Oculto para Impresión de Ticket Térmico -->
+<div id="ticket-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title">
+    <div class="modal-content ticket-modal-card">
+        <div class="modal-header">
+            <h3 id="ticket-modal-title">Vista Previa del Ticket</h3>
+            <button class="close-modal-btn" type="button" onclick="closeTicketModal()" aria-label="Cerrar">×</button>
+        </div>
+        <div id="ticket-print-area" class="ticket-container">
+            <div class="ticket-header">
+                <h2 class="ticket-brand">VENTO POS</h2>
+                <p class="ticket-legal">CAFÉ VENTO S.A. DE C.V.</p>
+                <p class="ticket-info">NIT: 0614-010198-101-0 | NRC: 123456-7</p>
+                <p class="ticket-info">San Salvador, El Salvador</p>
+                <div class="ticket-divider">--------------------------------</div>
+                <h3 id="ticket-document-name" class="ticket-doc-title">FACTURA DE CONSUMIDOR FINAL</h3>
+                <p class="ticket-info">DTE / DOCUMENTO TRIBUTARIO ELECTRÓNICO</p>
+                <p id="ticket-contingency-status" class="ticket-contingency-status hidden"></p>
+                <div class="ticket-divider">--------------------------------</div>
+                <div class="ticket-dtes-stamps">
+                    <p class="stamp-line"><strong>CÓD. GENERACIÓN:</strong></p><p class="stamp-value" id="ticket-cod-gen">-</p>
+                    <p class="stamp-line"><strong>NUM. CONTROL:</strong></p><p class="stamp-value" id="ticket-num-control">-</p>
+                    <p class="stamp-line"><strong>SELLO RECEPCIÓN:</strong></p><p class="stamp-value" id="ticket-sello-rec">-</p>
+                </div>
+                <div class="ticket-divider">--------------------------------</div>
+            </div>
+            <div class="ticket-details">
+                <p><strong>Fecha:</strong> <span id="ticket-date">-</span></p>
+                <p><strong>Folio:</strong> <span id="ticket-folio">-</span></p>
+                <p><strong>Cajero:</strong> <span id="ticket-cashier">-</span></p>
+                <p><strong>Cliente:</strong> <span id="ticket-customer">Consumidor Final</span></p>
+            </div>
+            <div class="ticket-divider">--------------------------------</div>
+            <table class="ticket-items-table">
+                <thead><tr><th class="col-qty">Cant</th><th class="col-desc">Descripción</th><th class="col-price">P.U.</th><th class="col-total">Total</th></tr></thead>
+                <tbody id="ticket-body-items"></tbody>
+            </table>
+            <div class="ticket-divider">--------------------------------</div>
+            <div class="ticket-totals">
+                <div class="totals-row"><span>Subtotal:</span><span id="ticket-subtotal">$0.00</span></div>
+                <div class="totals-row"><span>IVA (13%):</span><span id="ticket-tax">$0.00</span></div>
+                <div class="totals-row" id="ticket-discount-row"><span>Descuento:</span><span id="ticket-discount">-$0.00</span></div>
+                <div class="totals-row grand-total"><strong>TOTAL:</strong><strong id="ticket-grand-total">$0.00</strong></div>
+            </div>
+            <div class="ticket-divider">--------------------------------</div>
+            <div class="ticket-payment">
+                <p><strong>Pago:</strong> <span id="ticket-pay-method">Efectivo</span></p>
+                <p><strong>Recibido:</strong> <span id="ticket-cash-given">$0.00</span></p>
+                <p><strong>Cambio:</strong> <span id="ticket-change">$0.00</span></p>
+            </div>
+            <div class="ticket-footer"><div class="ticket-divider">--------------------------------</div><p>¡Gracias por su compra!</p><p class="small-text">Consulte su DTE en el Ministerio de Hacienda.</p></div>
+        </div>
+        <div class="modal-actions"><button class="btn-secondary" type="button" onclick="closeTicketModal()">Cerrar</button><button class="btn-primary" type="button" onclick="printTicket()">🖨️ Imprimir Ticket</button></div>
+    </div>
+</div>
+<dialog class="product-dialog" id="product-dialog" aria-labelledby="product-dialog-title">
+    <form id="product-form">
+        <button class="dialog-close" id="close-product-dialog" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow" id="product-dialog-eyebrow">CATÁLOGO</p>
+        <h2 id="product-dialog-title">Nuevo producto</h2>
+        <label class="product-form-field">Nombre<input name="nombre" type="text" maxlength="150" required autocomplete="off"></label>
+        <label class="product-form-field">Categoría<input name="categoria" type="text" maxlength="60" list="product-categories" required autocomplete="off"></label>
+        <datalist id="product-categories"></datalist>
+        <div class="product-form-row">
+            <label class="product-form-field">Precio<input name="precio" type="number" min="0" step="0.01" required></label>
+            <label class="product-form-field" id="product-stock-field">Existencias<input name="stock" type="number" min="0" step="1" required></label>
+        </div>
+        <label class="product-form-field" id="product-barcode-field">Código de barras (opcional)<input name="codigoBarras" type="text" maxlength="80" autocomplete="off"></label>
+        <label class="product-active-toggle" id="product-tax-toggle"><input name="precioIncluyeIva" type="checkbox" checked> El precio ya incluye IVA (13%)</label>
+        <label class="product-active-toggle" id="product-active-toggle"><input name="activo" type="checkbox" checked> Producto activo</label>
+        <p class="dialog-error hidden" id="product-form-error" role="alert"></p>
+        <div class="product-form-actions">
+            <button class="product-cancel-button" id="cancel-product-form" type="button">Cancelar</button>
+            <button class="checkout-button" id="save-product-button" type="submit">Guardar producto</button>
+        </div>
+    </form>
+</dialog>
+<dialog class="product-dialog" id="bulk-products-dialog" aria-labelledby="bulk-products-title">
+    <form id="bulk-products-form">
+        <button class="dialog-close" id="close-bulk-products-dialog" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow">CATÁLOGO DE PRODUCTOS</p>
+        <h2 id="bulk-products-title">Carga masiva de inventario (TXT / CSV)</h2>
+        <p class="page-subtitle">Importa productos y existencias desde un archivo de texto.</p>
+        <p><a class="text-button" href="/api/v1/productos/carga-masiva/plantilla">📥 Descargar plantilla TXT</a></p>
+        <div class="bulk-text-import">
+            <label class="product-form-field">Pegar filas desde Bloc de notas o Excel
+                <textarea id="bulk-products-text" rows="5"
+                          placeholder="Codigo&#9;Nombre&#9;Precio&#9;Stock&#9;Categoria"></textarea>
+            </label>
+            <p class="page-subtitle">Formato: Codigo, Nombre, Precio, Stock, Categoria (separado por tabulador o coma).</p>
+            <label class="bulk-text-dropzone" id="bulk-products-dropzone" for="bulk-products-text-file">
+                Suelta aquí un archivo TXT/CSV o haz clic para seleccionarlo
+                <input id="bulk-products-text-file" type="file" accept=".txt,.csv,text/plain,text/csv" hidden>
+            </label>
+            <p class="bulk-text-preview" id="bulk-products-text-preview">Vista previa: sin filas.</p>
+        </div>
+        <label class="product-form-field">Archivo TXT / CSV
+            <input id="bulk-products-file" type="file" accept=".txt,.csv,text/plain,text/csv" required>
+        </label>
+        <p class="dialog-error hidden" id="bulk-products-error" role="alert"></p>
+        <div class="product-form-actions">
+            <button class="product-cancel-button" id="cancel-bulk-products" type="button">Cancelar</button>
+            <button class="checkout-button" id="submit-bulk-products-text" type="button">Cargar texto</button>
+            <button class="checkout-button" id="submit-bulk-products" type="submit">Cargar productos</button>
+        </div>
+    </form>
+</dialog>
+<dialog class="product-dialog" id="inventory-adjust-dialog" aria-labelledby="inventory-adjust-title">
+    <form id="inventory-adjust-form">
+        <button class="dialog-close" id="close-inventory-adjust" type="button" aria-label="Cerrar">×</button>
+        <p class="eyebrow">MOVIMIENTO DE INVENTARIO</p>
+        <h2 id="inventory-adjust-title">Ajustar stock</h2>
+        <label class="product-form-field">Producto<select name="productoId" id="inventory-product-select" required></select></label>
+        <label class="product-form-field">Tipo de movimiento<select name="tipo" required><option value="ENTRADA">Entrada</option><option value="SALIDA">Salida</option></select></label>
+        <label class="product-form-field">Cantidad<input name="cantidad" type="number" min="1" step="1" required></label>
+        <label class="product-form-field">Motivo<input name="motivo" type="text" maxlength="250" required placeholder="Ej. Compra a proveedor, merma..."></label>
+        <p class="dialog-error hidden" id="inventory-adjust-error" role="alert"></p>
+        <div class="product-form-actions">
+            <button class="product-cancel-button" id="cancel-inventory-adjust" type="button">Cancelar</button>
+            <button class="checkout-button" id="save-inventory-adjust" type="submit">Registrar movimiento</button>
+        </div>
+    </form>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
